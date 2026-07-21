@@ -5,6 +5,10 @@ VisualStudioVersion = 17.14.37314.3 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiKeyRedisLock", "MultiKeyRedisLock\MultiKeyRedisLock.csproj", "{3C1B70EF-FE56-4B99-85FC-D1B53CF2FC2B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiKeyRedisLock.Tests", "MultiKeyRedisLock.Tests\MultiKeyRedisLock.Tests.csproj", "{9D0D7775-78F1-4DC2-BAF0-6A37EADB8CD8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiKeyRedisLock.Sample", "MultiKeyRedisLock.Sample\MultiKeyRedisLock.Sample.csproj", "{16006266-D525-4D37-88CC-EFAD929F4D44}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{3C1B70EF-FE56-4B99-85FC-D1B53CF2FC2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C1B70EF-FE56-4B99-85FC-D1B53CF2FC2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C1B70EF-FE56-4B99-85FC-D1B53CF2FC2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D0D7775-78F1-4DC2-BAF0-6A37EADB8CD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D0D7775-78F1-4DC2-BAF0-6A37EADB8CD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D0D7775-78F1-4DC2-BAF0-6A37EADB8CD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D0D7775-78F1-4DC2-BAF0-6A37EADB8CD8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{16006266-D525-4D37-88CC-EFAD929F4D44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16006266-D525-4D37-88CC-EFAD929F4D44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16006266-D525-4D37-88CC-EFAD929F4D44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16006266-D525-4D37-88CC-EFAD929F4D44}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
