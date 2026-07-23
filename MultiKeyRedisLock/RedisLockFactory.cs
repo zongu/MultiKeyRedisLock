@@ -103,24 +103,24 @@ namespace MultiKeyRedisLock
                         Values = new RedisValue[] { (RedisValue)la.lockId, (RedisValue)la.expireSeconds }
                     });
 
-                    var keyScript = string.Join(",", keyWithTtls.Select((p, index) => $"KEYS[{index + 1}]"));
-                    var setScript = string.Join("\r\n", keyWithTtls.Select((p, index) => $"redis.call('SET', KEYS[{index + 1}], ARGV[{2 * index + 1}], 'EX', ARGV[{2 * index + 2}])"));
+                    var script = @"
+                        local existValues = {}
+                        
+                        for i = 1, #KEYS do
+                            local val = redis.call('GET', KEYS[i])
 
-                    var script = $@"
-                        local keys = redis.call('MGET', {keyScript})
-                        local existValues = {{}}
-
-                        for _, val in ipairs(keys) do
                             if val then
                                 table.insert(existValues, val)
                             end
                         end
-
+                        
                         if #existValues > 0 then
                             return existValues
                         else
-                            {setScript}
-
+                            for i = 1, #KEYS do
+                                redis.call('SET', KEYS[i], ARGV[2 * i - 1], 'EX', ARGV[2 * i])
+                            end
+                        
                             return nil
                         end
                     ";
