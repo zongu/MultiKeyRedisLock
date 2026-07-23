@@ -61,7 +61,7 @@ namespace MultiKeyRedisLock
         /// </summary>
         public void Dispose()
         {
-            if (this.factory != null && this.lockIds.Any())
+            if (this.factory != null && IsAcquired && this.lockIds.Any())
             {
                 this.factory.LockRelease(this.lockIds);
             }
