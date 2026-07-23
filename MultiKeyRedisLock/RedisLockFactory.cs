@@ -30,8 +30,9 @@ namespace MultiKeyRedisLock
         /// <param name="ttl">鎖保留時間</param>
         /// <param name="waitTime">可被等待時間</param>
         /// <param name="retryTime">檢查間隔時間</param>
+        /// <param name="anyKeyExistQuit">任一鎖要不到就停止</param>
         /// <returns></returns>
-        public IRedisLck CreateLock(IEnumerable<string> resource, TimeSpan ttl, TimeSpan waitTime, TimeSpan retryTime)
+        public IRedisLck CreateLock(IEnumerable<string> resource, TimeSpan ttl, TimeSpan waitTime, TimeSpan retryTime, bool anyKeyExistQuit = true)
         {
             if (ttl < TimeSpan.Zero || ttl > TimeSpan.MaxValue)
             {
@@ -54,7 +55,7 @@ namespace MultiKeyRedisLock
 
             while (
                 // 嘗試加鎖
-                !this.TryInsert(resource.Select(r => (r, ttl.TotalSeconds)).ToList(), ref unAcquareResource) &&
+                !this.TryInsert(resource.Select(r => (r, ttl.TotalSeconds)).ToList(), ref unAcquareResource, anyKeyExistQuit) &&
                 // 如果超過等待時間就不繼續做了
                 expireDateTime > DateTime.Now + retryTime)
             {
@@ -62,7 +63,7 @@ namespace MultiKeyRedisLock
                 SpinWait.SpinUntil(() => false, retryTime);
             }
 
-            return new RedisLck(this, unAcquareResource.ToList(), extendCount, resource.ToList());
+            return new RedisLck(this, unAcquareResource.ToList(), extendCount, resource.ToList(), anyKeyExistQuit);
         }
 
         /// <summary>
@@ -90,49 +91,58 @@ namespace MultiKeyRedisLock
         /// </summary>
         /// <param name="lockAcquires"></param>
         /// <param name="unAcquareResource"></param>
+        /// <param name="anyKeyExistQuit"></param>
         /// <returns></returns>
-        private bool TryInsert(IEnumerable<(string lockId, double expireSeconds)> lockAcquires, ref IEnumerable<string> unAcquareResource)
+        private bool TryInsert(IEnumerable<(string lockId, double expireSeconds)> lockAcquires, ref IEnumerable<string> unAcquareResource, bool anyKeyExistQuit)
         {
             try
             {
                 var executeResult = this.UseConnection(redis =>
                 {
-                    var keyWithTtls = lockAcquires.Select(la => new
-                    {
-                        Key = (RedisKey)$"{this.affixKey}:{la.lockId}",
-                        Values = new RedisValue[] { (RedisValue)la.lockId, (RedisValue)la.expireSeconds }
-                    });
+                    var keys = lockAcquires.Select(la => (RedisKey)$"{this.affixKey}:{la.lockId}").ToArray();
+                    var values =
+                        new RedisValue[] { anyKeyExistQuit ? "1" : "0" }
+                        .Concat(lockAcquires.Select(la => new RedisValue[] { (RedisValue)la.lockId, (RedisValue)la.expireSeconds }).SelectMany(p => p)).ToArray();
 
                     var script = @"
                         local existValues = {}
+                        local existSet = {}
+                        local anyKeyExistQuit = ARGV[1] == '1'
                         
                         for i = 1, #KEYS do
                             local val = redis.call('GET', KEYS[i])
 
                             if val then
+                                existSet[tostring(KEYS[i])] = true
                                 table.insert(existValues, val)
                             end
                         end
                         
-                        if #existValues > 0 then
+                        if anyKeyExistQuit and #existValues > 0 then
                             return existValues
                         else
                             for i = 1, #KEYS do
-                                redis.call('SET', KEYS[i], ARGV[2 * i - 1], 'EX', ARGV[2 * i])
+                                if not existSet[tostring(KEYS[i])] then
+                                    redis.call('SET', KEYS[i], ARGV[2 * i], 'EX', ARGV[2 * i + 1])
+                                end
                             end
                         
-                            return nil
+                            if anyKeyExistQuit then
+                                return nil
+                            else
+                                return existValues
+                            end
                         end
                     ";
 
-                    var result = redis.ScriptEvaluate(script, keyWithTtls.Select(p => p.Key).ToArray(), keyWithTtls.SelectMany(p => p.Values).ToArray());
+                    var result = redis.ScriptEvaluate(script, keys, values);
 
                     return result.IsNull ? Enumerable.Empty<string>() : ((RedisResult[])result).Select(p => p.ToString()).ToList();
                 });
 
                 unAcquareResource = executeResult.ToList();
 
-                return !executeResult.Any();
+                return !anyKeyExistQuit || !executeResult.Any();
             }
             catch
             {

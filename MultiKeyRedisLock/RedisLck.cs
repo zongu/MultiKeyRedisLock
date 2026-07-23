@@ -17,6 +17,8 @@ namespace MultiKeyRedisLock
 
         private IEnumerable<string> unAcquareLockIds;
 
+        private bool anyKeyExistQuit;
+
         /// <summary>
         /// 建構子
         /// </summary>
@@ -24,12 +26,13 @@ namespace MultiKeyRedisLock
         /// <param name="unAcquareLockIds"></param>
         /// <param name="extendCount"></param>
         /// <param name="lockIds"></param>
-        public RedisLck(RedisLockFactory factory, IEnumerable<string> unAcquareLockIds, int extendCount, IEnumerable<string> lockIds)
+        public RedisLck(RedisLockFactory factory, IEnumerable<string> unAcquareLockIds, int extendCount, IEnumerable<string> lockIds, bool anyKeyExistQuit)
         {
             this.factory = factory;
             this.unAcquareLockIds = unAcquareLockIds.ToList();
             this.extendCount = extendCount;
             this.lockIds = lockIds.ToList();
+            this.anyKeyExistQuit = anyKeyExistQuit;
         }
 
         /// <summary>
@@ -42,7 +45,7 @@ namespace MultiKeyRedisLock
         /// 是否獲得鎖
         /// </summary>
         public bool IsAcquired
-            => !this.unAcquareLockIds.Any();
+            => !this.anyKeyExistQuit || !this.unAcquareLockIds.Any();
 
         /// <summary>
         /// 鎖ID
@@ -61,9 +64,11 @@ namespace MultiKeyRedisLock
         /// </summary>
         public void Dispose()
         {
-            if (this.factory != null && IsAcquired && this.lockIds.Any())
+            if (
+                this.factory != null && IsAcquired && this.lockIds.Any())
             {
-                this.factory.LockRelease(this.lockIds);
+                // 排掉不是本次鎖的對象
+                this.factory.LockRelease(this.lockIds.Except(this.unAcquareLockIds));
             }
         }
     }
